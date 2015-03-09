@@ -3,7 +3,7 @@
  * @link    https://github.com/ratchagrn/i18n-jed
  * @license http://opensource.org/licenses/MIT
  *
- * @version 0.1.0
+ * @version 0.2.0
  */
 
 
@@ -84,12 +84,22 @@ if (isServer) {
    * ------------------------------------------------------------
    */
 
-  var localesPath = __dirname + '/locales',
+  var publicFolder = __dirname + '/../../public',
+      localesPath = publicFolder + '/locales',
       concat = [];
 
+  // create locales folder if not exists
+  if ( !fs.existsSync(localesPath) ) {
+    fs.mkdirSync(localesPath);
+  }
+
   fs.readdirSync(localesPath).forEach(function(file) {
-    var content = fs.readFileSync(localesPath + '/' + file);
-    concat.push( content.toString() );
+    // read json file only
+    if ( /.+\.json$/.test(file) ) {
+      var content = fs.readFileSync(localesPath + '/' + file),
+          langName = file.replace('.json', '');
+      concat.push( "__locales['" + langName + "'] = " + content.toString() );
+    }
   });
 
 
@@ -98,14 +108,18 @@ if (isServer) {
    * ------------------------------------------------------------
    */
 
-  var allResources = 'var __lang = {};' +
+  var allResources = 'var __locales = {};' +
                      concat.join(';') +
                      ';if(typeof exports !== "undefined"){' +
-                     'module.exports=__lang;}';
+                     'module.exports=__locales;}';
 
   allResources = UglifyJS.minify( allResources, { fromString: true } ).code;
+  // add comment at first line
+  allResources = '/* This file generate by node modules `i18n-jed` */\n' +
+                 allResources;
 
-  var localesSource = __dirname + '/locales.js';
+
+  var localesSource = publicFolder + '/i18n-jed-locales.js';
 
   // write file
   fs.writeFileSync( localesSource, allResources, 'UTF-8' );
@@ -114,7 +128,7 @@ if (isServer) {
 
 
 // set language sources
-var __lang = {},
+var __locales = {},
     __activeLang = 'en';
 
 
@@ -125,20 +139,19 @@ if (isServer) {
    * ------------------------------------------------------------
    */
 
-  __lang = require( localesSource );
+  __locales = require( localesSource );
 }
 else if (isClient) {
 
   /**
    * Get language sources from window object
-   * you must include it before include i18n-jed
    * example:
-   * <script src="i18n-jed/locales.js"></script>
-   * <script src="i18n-jed/i18n-jed.js"></script>
+   * <script src="node_modules/i18n-jed/i18n-jed.js"></script>
+   * <script src="i18n-jed-locales.js"></script>
    * ------------------------------------------------------------
    */
 
-  __lang = window.__lang;
+  __locales = window.__locales;
 }
 
 
@@ -183,7 +196,7 @@ i18nJed.prototype = {
 
   t: function(str) {
     var output = str,
-        targetLang = __lang[__activeLang];
+        targetLang = __locales[__activeLang];
 
     if (targetLang && targetLang[str]) {
       output = targetLang[str];

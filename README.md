@@ -1,10 +1,15 @@
 # i18n-jed
 Node module use for translate language that can use in `server`, `template (jade)` and `client` (Support only Express 4)
 
-## Version 0.1.0
+## Version 0.2.0
 
 
 ## Change log
+
+
+### 0.2.0
+- Change how to set locales
+- Using `json` instead of `js`
 
 
 ### 0.1.0
@@ -14,15 +19,15 @@ Node module use for translate language that can use in `server`, `template (jade
 
 ### Seting locale files
 Open i18n-jed directories and then create `locales` folder. You can create/edit translate resources here.
-You must use file name with lang code `english = en (en.js), thai = th (th.js)`
+You must use file name with lang code `english = en (en.json), thai = th (th.json)`
 
-example locales content:
+example locales content (th.json):
 
-__lang['th'] = {
-
-"Hello": "สวัสดี"
-
+```json
+{
+  "Hello": "สวัสดี"
 }
+```
 
 
 ### Example
@@ -53,7 +58,7 @@ h1= t('Hello') // สวัสดี
 ```html
 <!-- HTML -->
 <script src="node_modules/i18n-jed/i18n-jed.js"></script>
-<script src="node_modules/i18n-jed/locales.js"></script>
+<script src="i18n-jed-locales.js"></script>
 ```
 
 ```javascript
