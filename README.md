@@ -13,8 +13,8 @@ Node module use for translate language that can use in `server`, `template (jade
 
 
 ### Seting locale files
-Open i18n-jed directories see `locales` folder you can edit translate resources here.
-You must create file name with lang code `enlish = en (en.js), thai = th (th.js)`
+Open i18n-jed directories and then create `locales` folder. You can create/edit translate resources here.
+You must use file name with lang code `english = en (en.js), thai = th (th.js)`
 
 example locales content:
 
@@ -58,7 +58,16 @@ h1= t('Hello') // สวัสดี
 
 ```javascript
 // Javascript
-var div = document.createElement('div');
-div.appendChild( document.createTextNode( t('Hello') ) ); // สวัสดี
-document.body.appendChild(div);
+
+var i18n = new i18nJed({
+  defaultLang: 'th'
+});
+
+(function(t) {
+
+  var div = document.createElement('div');
+  div.appendChild( document.createTextNode( t('Hello') ) ); // สวัสดี
+  document.body.appendChild(div);
+
+})(i18n.t)
 ```
