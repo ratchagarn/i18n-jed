@@ -3,7 +3,7 @@
  * @link    https://github.com/ratchagrn/i18n-jed
  * @license http://opensource.org/licenses/MIT
  *
- * @version 0.3.1
+ * @version 0.3.2
  */
 
 
@@ -148,8 +148,8 @@ var i18nJed = (function() {
     init: function(options) {
       if (options == null) { options = {}; }
       _options = extend( _defaultOptions, options );
-      this.setActiveLang( _options.defaultLang );
-      this.createLocaleSource();
+      i18nJed.setActiveLang( _options.defaultLang );
+      i18nJed.createLocaleSource();
     },
 
 
@@ -160,6 +160,7 @@ var i18nJed = (function() {
      * ------------------------------------------------------------
      * @name _createLocaleSource
      * @param {String} lang code for create locale source
+     * @return {Object} locale source by lang code
      */
 
     createLocaleSource: function(langCode) {
@@ -204,39 +205,18 @@ var i18nJed = (function() {
 
             if (langCode === targetLangCode) {
               localeContent = content.toString();
-              _localesCache = JSON.parse( localeContent );
             }
           }
         });
 
-
-        /**
-         * write all locales files into single file
-         * ------------------------------------------------------------
-         */
-
-        var allResources = 'var __locales = ' + localeContent;
-
-        // add comment at first line
-        allResources = '/* This file generate by node modules `i18n-jed` */\n' +
-                       allResources;
-
-
-        var localesSourceDest = publicFolder + '/i18n-jed-locales.js';
-
-        // write file
-        fs.writeFileSync( localesSourceDest, allResources, 'UTF-8' );
-
       }
-
 
       if (isServer) {
-        _locales = _localesCache;
+        return JSON.parse( localeContent );
       }
-      else if (isClient) {
-        _locales = window.__locales;
+      else {
+        return window.__locales;
       }
-
     },
 
 
@@ -253,15 +233,70 @@ var i18nJed = (function() {
 
 
     /**
-     * wrapper function for translate language with `vsprintf`
+     * Set locale source
+     * ------------------------------------------------------------
+     * @name setLocaleSource
+     * @param {Object} locale source
+     */
+
+    setLocaleSource: function(source) {
+      if (isClient) {
+        _locales = window.__locales;
+      }
+      else {
+        _locales = source;
+      }
+    },
+
+
+    /**
+     * Base function to translate wording
+     * ------------------------------------------------------------
+     * @name i18nJed.translate
+     * @param {String} message for translate (singular)
+     * @param {String} plural message for translate
+     * @param {Number} number of something for use as translate to singular or plural
+     * @return {String} message after translate
+     */
+
+    translate: function(msg, plural, count) {
+      var output = msg;
+
+      // translate normal message
+      if ( _locales[msg] ) { output = _locales[msg]; }
+
+      // translate plural message
+      if (plural != null && count != null) {
+        count = parseInt(count, 10);
+
+        // if found count is number
+        if ( !isNaN(count) ) {
+
+          if (count > 1) {
+            output = output.other || plural;
+          }
+          else {
+            output = output.one || msg;
+          }
+
+        }
+      }
+
+      return output;
+    },
+
+
+
+    /**
+     * wrapper function for translate language
      * ------------------------------------------------------------
      * @name i18nJed.t
-     * @param {String} message for translate with `vsprintf`
-     * @return {String} message after translate with `vsprintf`
+     * @param {String} message for translate
+     * @return {String} message after translate
      */
 
     t: function(msg) {
-      var output = this.translate(msg);
+      var output = i18nJed.translate(msg);
       if (arguments.length > 1) {
         output = vsprintf( output, slice.call(arguments, 1) );
       }
@@ -270,16 +305,23 @@ var i18nJed = (function() {
 
 
     /**
-     * Base function to translate wording
+     * wrapper function for translate plural message
      * ------------------------------------------------------------
-     * @name i18nJed.translate
-     * @param {String} message for translate
+     * @name i18nJed.tn
+     * @param {String} singular message for translate
+     * @param {String} plural message for translate
+     * @param {Number} number of something for use as translate to singular or plural
      * @return {String} message after translate
      */
-    
-    translate: function(msg) {
-      var output = msg;
-      if (_locales[msg]) { output = _locales[msg]; }
+
+    tn: function(singular, plural, count) {
+      var output = i18nJed.translate(singular, plural, count);
+      if (arguments.length > 3) {
+        output = vsprintf( output, slice.call(arguments, 3) );
+      }
+      else {
+        output = vsprintf( output, slice.call(arguments, 2) );
+      }
       return output;
     },
 
@@ -313,12 +355,13 @@ var i18nJed = (function() {
       }
 
       // create new locale source
-      if (isServer) {
-        this.createLocaleSource();
-      }
+      // if (isServer) {
+      //   i18nJed.setLocaleSource( i18nJed.createLocaleSource() );
+      // }
+      i18nJed.setLocaleSource( i18nJed.createLocaleSource() );
     }
 
-  }
+  };
 
 })();
 
@@ -366,13 +409,22 @@ if (isServer) {
       }
 
       // using translate language in routing
-      req.t = i18nJed.t
+      req.t = i18nJed.t;
+      req.tn = i18nJed.tn;
+
       // using translate language in template (jade)
-      res.locals.t = i18nJed.t
+      res.locals.t = i18nJed.t;
+      res.locals.tn = i18nJed.tn;
+      res.locals.generateI18nJedLocale = function() {
+        var localeSource = i18nJed.createLocaleSource();
+        localeSource = 'var __locales = ' + JSON.stringify( localeSource );
+        return localeSource;
+      }
 
       next();
     });
   };
+
 
 }
 

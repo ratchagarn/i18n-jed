@@ -1,10 +1,14 @@
 # i18n-jed
 Node module use for translate language that can use in `server`, `template (jade)` and `client` (Support only Express 4)
 
-## Version 0.3.1
+## Version 0.3.2
 
 
 ## Change log
+
+### 0.3.2
+- Add `tn` method for translate `plural` message.
+- Change way to use i18n in `client`
 
 
 ### 0.3.1
@@ -61,19 +65,20 @@ app.get('/home', function(req, res) {
 });
 ```
 
-#### TEMPLATE (jade)
+#### TEMPLATE (Jade)
 
 ```javascript
 h1= t('Hello') // สวัสดี
 ```
 
-#### Client
+#### Client (Jade)
 ```html
-<!-- HTML -->
-<script src="i18n-jed-locales.js"></script>
+<!-- HTML (Jade) -->
+script.
+  !{generateI18nJedLocale()} // genderate locale source for client
 <!-- for using vsprintf -->
-<script src="node_modules/sprintf-js/src/sprintf.js"></script>
-<script src="i18n-jed.js"></script>
+script(src="node_modules/sprintf-js/src/sprintf.js")
+script(src="i18n-jed.js")
 ```
 
 ```javascript
