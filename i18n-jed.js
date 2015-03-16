@@ -3,7 +3,7 @@
  * @link    https://github.com/ratchagrn/i18n-jed
  * @license http://opensource.org/licenses/MIT
  *
- * @version 0.3.0
+ * @version 0.3.1
  */
 
 
@@ -19,7 +19,9 @@
  */
 
 var isServer = false,
-    isClient = false;
+    isClient = false,
+    slice = Array.prototype.slice,
+    vsprintf = function(str) { return str; };
 
 
 if (typeof module !== 'undefined' && typeof exports !== 'undefined') {
@@ -27,6 +29,20 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined') {
 }
 if (typeof window !== 'undefined') {
   isClient = true;
+}
+
+
+/**
+ * ------------------------------------------------------------
+ * Load sprintf
+ * ------------------------------------------------------------
+ */
+
+if (isServer) {
+  vsprintf = require('sprintf-js').vsprintf;
+}
+else if (typeof window.vsprintf === 'function') {
+  vsprintf = window.vsprintf;
 }
 
 
@@ -237,21 +253,33 @@ var i18nJed = (function() {
 
 
     /**
-     * Base function to translate wording
+     * wrapper function for translate language with `vsprintf`
      * ------------------------------------------------------------
      * @name i18nJed.t
-     * @param {String} wording for translate
-     * @return {String} wording after translate
+     * @param {String} message for translate with `vsprintf`
+     * @return {String} message after translate with `vsprintf`
      */
 
-    t: function(str) {
-
-      var output = str;
-
-      if (_locales[str]) {
-        output = _locales[str];
+    t: function(msg) {
+      var output = this.translate(msg);
+      if (arguments.length > 1) {
+        output = vsprintf( output, slice.call(arguments, 1) );
       }
+      return output;
+    },
 
+
+    /**
+     * Base function to translate wording
+     * ------------------------------------------------------------
+     * @name i18nJed.translate
+     * @param {String} message for translate
+     * @return {String} message after translate
+     */
+    
+    translate: function(msg) {
+      var output = msg;
+      if (_locales[msg]) { output = _locales[msg]; }
       return output;
     },
 
@@ -337,8 +365,11 @@ if (isServer) {
         previousActiveLang = i18nJed.getActiveLang();
       }
 
-      // using translate language in template
+      // using translate language in routing
+      req.t = i18nJed.t
+      // using translate language in template (jade)
       res.locals.t = i18nJed.t
+
       next();
     });
   };

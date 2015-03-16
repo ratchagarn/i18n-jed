@@ -14,5 +14,8 @@
     "i18n"
   ],
   "author": "Ratchagarn Naewbuntad",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "sprintf-js": "1.0.2"
+  }
 }
