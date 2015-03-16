@@ -14,6 +14,24 @@
 
 /**
  * ------------------------------------------------------------
+ * Check is server of client
+ * ------------------------------------------------------------
+ */
+
+var isServer = false,
+    isClient = false;
+
+
+if (typeof module !== 'undefined' && typeof exports !== 'undefined') {
+  isServer = true;
+}
+if (typeof window !== 'undefined') {
+  isClient = true;
+}
+
+
+/**
+ * ------------------------------------------------------------
  * Helper
  * ------------------------------------------------------------
  */
@@ -43,199 +61,238 @@ function extend(dst, source) {
 
 /**
  * ------------------------------------------------------------
- * Check is server of client
- * ------------------------------------------------------------
- */
-
-var isServer = false,
-    isClient = false,
-    lang = {};
-
-
-if (typeof module !== 'undefined' && typeof exports !== 'undefined') {
-  isServer = true;
-}
-if (typeof window !== 'undefined') {
-  isClient = true;
-}
-
-
-/**
- * ------------------------------------------------------------
- * Server side only
- * ------------------------------------------------------------
- */
-
-if (isServer) {
-
-  /**
-   * ------------------------------------------------------------
-   * Load requrie files
-   * ------------------------------------------------------------
-   */
-
-  var fs = require('fs'),
-      UglifyJS = require('uglify-js');
-
-
-  /**
-   * ------------------------------------------------------------
-   * Load all locales files and concat to single file
-   * ------------------------------------------------------------
-   */
-
-  var publicFolder = __dirname + '/../../public',
-      localesPath = publicFolder + '/locales',
-      concat = [];
-
-  // create locales folder if not exists
-  if ( !fs.existsSync(localesPath) ) {
-    fs.mkdirSync(localesPath);
-  }
-
-  fs.readdirSync(localesPath).forEach(function(file) {
-    // read json file only
-    if ( /.+\.json$/.test(file) ) {
-      var content = fs.readFileSync(localesPath + '/' + file),
-          langName = file.replace('.json', '');
-      concat.push( "__locales['" + langName + "'] = " + content.toString() );
-    }
-  });
-
-
-  /**
-   * write all locales files into single file
-   * ------------------------------------------------------------
-   */
-
-  var allResources = 'var __locales = {};' +
-                     concat.join(';') +
-                     ';if(typeof exports !== "undefined"){' +
-                     'module.exports=__locales;}';
-
-  allResources = UglifyJS.minify( allResources, { fromString: true } ).code;
-  // add comment at first line
-  allResources = '/* This file generate by node modules `i18n-jed` */\n' +
-                 allResources;
-
-
-  var localesSource = publicFolder + '/i18n-jed-locales.js';
-
-  // write file
-  fs.writeFileSync( localesSource, allResources, 'UTF-8' );
-
-}
-
-
-// set language sources
-var __locales = {},
-    __activeLang = 'en';
-
-
-if (isServer) {
-
-  /**
-   * Load language sources
-   * ------------------------------------------------------------
-   */
-
-  __locales = require( localesSource );
-}
-else if (isClient) {
-
-  /**
-   * Get language sources from window object
-   * example:
-   * <script src="node_modules/i18n-jed/i18n-jed.js"></script>
-   * <script src="i18n-jed-locales.js"></script>
-   * ------------------------------------------------------------
-   */
-
-  __locales = window.__locales;
-}
-
-
-/**
- * ------------------------------------------------------------
  * Base function i18n
  * ------------------------------------------------------------
  */
 
-var i18nJed = function(options) {
-  if (options == null) { options = {}; }
 
-  // default options
-  this.options = {
-    defaultLang: 'en',
-    locales: ['en', 'th']
-  };
-
-  // merge options
-  this.options = extend(this.options, options);
-
-  // set current active language by default language
-  __activeLang = this.options.defaultLang;
-}
+var i18nJed = (function() {
 
 
-/**
- * ------------------------------------------------------------
- * i18n method
- * ------------------------------------------------------------
- */
+  // current using language
+  var _activeLang = 'en',
 
-i18nJed.prototype = {
+      /**
+       * ------------------------------------------------------------
+       * locales sources storage
+       * ------------------------------------------------------------
+       */
 
-  /**
-   * Base function to translate wording
-   * ------------------------------------------------------------
-   * @name i18nJed.t
-   * @param {String} wording for translate
-   * @return {String} wording after translate
-   */
-
-  t: function(str) {
-    var output = str,
-        targetLang = __locales[__activeLang];
-
-    if (targetLang && targetLang[str]) {
-      output = targetLang[str];
-    }
-
-    return output;
-  },
+      _locales = {},
 
 
-  /**
-   * Get current active language
-   * ------------------------------------------------------------
-   * @name i18nJed.setActiveLang
-   * @return {String} language is active
-   */
+      /**
+       * ------------------------------------------------------------
+       * locales sources storage cache
+       * ------------------------------------------------------------
+       */
 
-  getActiveLang: function() {
-    return __activeLang;
-  },
+      _localesCache = {},
+
+
+      /**
+       * ------------------------------------------------------------
+       * Default options
+       * ------------------------------------------------------------
+       */
+
+      _defaultOptions = {
+        defaultLang: 'en',
+        locales: ['en', 'th'],
+        cookieName: 'lang'
+      },
+
+
+      /**
+       * ------------------------------------------------------------
+       * Options for use in i18n
+       * ------------------------------------------------------------
+       */
+
+      _options = {};
 
 
   /**
-   * Set current active language for translate
    * ------------------------------------------------------------
-   * @name i18nJed.setActiveLang
-   * @param {String} language for active
+   * Public method
+   * ------------------------------------------------------------
    */
 
-  setActiveLang: function(lang) {
-    lang = lang.replace(/"/g, '');
-    if (this.options.locales.indexOf(lang) > -1) {
-      __activeLang = lang;
+
+  return {
+
+    /**
+     * Initialize for i18n
+     * ------------------------------------------------------------
+     * @name i18nJed.init
+     * @param {Object} options for set
+     * @return {Object} current using options
+     */
+
+    init: function(options) {
+      if (options == null) { options = {}; }
+      _options = extend( _defaultOptions, options );
+      this.setActiveLang( _options.defaultLang );
+      this.createLocaleSource();
+    },
+
+
+    /**
+     * ------------------------------------------------------------
+     * Create locale source from active string for server and client
+     * (this function for Server only)
+     * ------------------------------------------------------------
+     * @name _createLocaleSource
+     * @param {String} lang code for create locale source
+     */
+
+    createLocaleSource: function(langCode) {
+
+      // this path for server only
+      if (isServer) {
+
+        // set default lang code for create
+        if (langCode == null) { langCode = this.getActiveLang(); }
+
+
+        /**
+         * ------------------------------------------------------------
+         * Load requrie files
+         * ------------------------------------------------------------
+         */
+
+        var fs = require('fs');
+
+
+        /**
+         * ------------------------------------------------------------
+         * Load all locales files and concat to single file
+         * ------------------------------------------------------------
+         */
+
+        var publicFolder = __dirname + '/../../public',
+            localesPath = publicFolder + '/locales',
+            localeContent = '';
+
+
+        // create locales folder if not exists
+        if ( !fs.existsSync(localesPath) ) {
+          fs.mkdirSync(localesPath);
+        }
+
+        fs.readdirSync(localesPath).forEach(function(file) {
+          // read json file only
+          if ( /.+\.json$/.test(file) ) {
+            var content = fs.readFileSync(localesPath + '/' + file),
+                targetLangCode = file.replace('.json', '');
+
+            if (langCode === targetLangCode) {
+              localeContent = content.toString();
+              _localesCache = JSON.parse( localeContent );
+            }
+          }
+        });
+
+
+        /**
+         * write all locales files into single file
+         * ------------------------------------------------------------
+         */
+
+        var allResources = 'var __locales = ' + localeContent;
+
+        // add comment at first line
+        allResources = '/* This file generate by node modules `i18n-jed` */\n' +
+                       allResources;
+
+
+        var localesSourceDest = publicFolder + '/i18n-jed-locales.js';
+
+        // write file
+        fs.writeFileSync( localesSourceDest, allResources, 'UTF-8' );
+
+      }
+
+
+      if (isServer) {
+        _locales = _localesCache;
+      }
+      else if (isClient) {
+        _locales = window.__locales;
+      }
+
+    },
+
+
+    /**
+     * Get current using options
+     * ------------------------------------------------------------
+     * @name getOptions
+     * @return {Object} current using options
+     */
+
+    getOptions: function() {
+      return _options;
+    },
+
+
+    /**
+     * Base function to translate wording
+     * ------------------------------------------------------------
+     * @name i18nJed.t
+     * @param {String} wording for translate
+     * @return {String} wording after translate
+     */
+
+    t: function(str) {
+
+      var output = str;
+
+      if (_locales[str]) {
+        output = _locales[str];
+      }
+
+      return output;
+    },
+
+
+    /**
+     * Get current active language
+     * ------------------------------------------------------------
+     * @name i18nJed.setActiveLang
+     * @return {String} language is active
+     */
+
+    getActiveLang: function() {
+      return _activeLang;
+    },
+
+
+    /**
+     * Set current active language for translate
+     * ------------------------------------------------------------
+     * @name i18nJed.setActiveLang
+     * @param {String} language for active
+     */
+
+    setActiveLang: function(lang) {
+      lang = lang.replace(/"/g, '');
+      if (_options.locales.indexOf(lang) > -1) {
+        _activeLang = lang;
+      }
+      else {
+        console.warn('Not found locale "' + lang + '"');
+      }
+
+      // create new locale source
+      if (isServer) {
+        this.createLocaleSource();
+      }
     }
-    else {
-      console.warn('Not found locale "' + lang + '"');
-    }
+
   }
 
-}
+})();
 
 
 /**
@@ -258,18 +315,30 @@ if (isServer) {
   i18nJed.expressBind = function(app, options) {
     if (!app) { return; }
 
+    // init i18n
+    i18nJed.init( options );
+
+    // get options
+    var i18nOption = i18nJed.getOptions(),
+        previousActiveLang = i18nOption.defaultLang;
+
     // express 4
     app.use(function(req, res, next) {
 
-      var _i18nJed = new i18nJed(options);
+      // get lang code from cookie for auto create new locate source
+      var langFromCookie = req.cookies[i18nOption.cookieName];
+      if (typeof langFromCookie === 'string') {
+        langFromCookie = langFromCookie.replace(/"/g, '');
+      }
 
-      // set active lang if lang cookie is available
-      if (req.cookies.lang) {
-        _i18nJed.setActiveLang( req.cookies.lang );
+      // auto set active lang if lang cookie is available
+      if ( langFromCookie != null && langFromCookie !== previousActiveLang ) {
+        i18nJed.setActiveLang( req.cookies[i18nOption.cookieName] );
+        previousActiveLang = i18nJed.getActiveLang();
       }
 
       // using translate language in template
-      res.locals.t = _i18nJed.t
+      res.locals.t = i18nJed.t
       next();
     });
   };

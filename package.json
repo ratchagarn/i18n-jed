@@ -1,6 +1,6 @@
 {
   "name": "i18n-jed",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "i18n for node/express4 server,jade,client",
   "main": "./index",
   "scripts": {
@@ -14,8 +14,5 @@
     "i18n"
   ],
   "author": "Ratchagarn Naewbuntad",
-  "license": "MIT",
-  "dependencies": {
-    "uglify-js": "2.4.16"
-  }
+  "license": "MIT"
 }

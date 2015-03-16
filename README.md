@@ -1,10 +1,15 @@
 # i18n-jed
 Node module use for translate language that can use in `server`, `template (jade)` and `client` (Support only Express 4)
 
-## Version 0.2.0
+## Version 0.3.0
 
 
 ## Change log
+
+
+### 0.3.0
+- Change code structures
+- Optimize locales sources
 
 
 ### 0.2.0
@@ -57,14 +62,14 @@ h1= t('Hello') // สวัสดี
 #### Client
 ```html
 <!-- HTML -->
-<script src="node_modules/i18n-jed/i18n-jed.js"></script>
 <script src="i18n-jed-locales.js"></script>
+<script src="node_modules/i18n-jed/i18n-jed.js"></script>
 ```
 
 ```javascript
 // Javascript
 
-var i18n = new i18nJed({
+i18nJed.init({
   defaultLang: 'th'
 });
 
