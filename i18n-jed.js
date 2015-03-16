@@ -3,7 +3,7 @@
  * @link    https://github.com/ratchagrn/i18n-jed
  * @license http://opensource.org/licenses/MIT
  *
- * @version 0.2.0
+ * @version 0.3.0
  */
 
 
